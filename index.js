@@ -37,16 +37,33 @@ function createDom(fiber) {
   return dom;
 }
 
+function commitRoot() {
+  commitWork(wipRoot.child);
+  wipRoot = null;
+}
+
+function commitWork(fiber) {
+  if (!fiber) {
+    return;
+  }
+  const domParent = fiber.parent.dom;
+  domParent.appendChild(fiber.dom);
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
+}
+
 function render(element, container) {
-  nextUnitOfWork = {
+  wipRoot = {
     dom: container,
     props: {
       children: [element],
     },
   };
+  nextUnitOfWork = wipRoot;
 }
 
 let nextUnitOfWork = null;
+let wipRoot = null;
 
 function workLoop(deadline) {
   let shouldYield = false;
@@ -54,19 +71,20 @@ function workLoop(deadline) {
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
     shouldYield = deadline.timeRemaining() < 1;
   }
-  // React doesn’t use requestIdleCallback anymore. Now it uses the scheduler package. But for this use case it’s conceptually the same.
+
+  if (!nextUnitOfWork && wipRoot) {
+    commitRoot();
+  }
+
   requestIdleCallback(workLoop);
 }
 
+// React doesn’t use requestIdleCallback anymore. Now it uses the scheduler package. But for this use case it’s conceptually the same.
 requestIdleCallback(workLoop);
 
 function performUnitOfWork(fiber) {
   if (!fiber.dom) {
     fiber.dom = createDom(fiber);
-  }
-
-  if (fiber.parent) {
-    fiber.parent.dom.appendChild(fiber.dom);
   }
 
   const elements = fiber.props.children;
@@ -115,7 +133,7 @@ const ReReact = {
 const element = (
   <div style="background: salmon">
     <h1>Hello World</h1>
-    <h2 style="text-align:right">from Didact</h2>
+    <h2 style="text-align:right">from ReReact</h2>
   </div>
 );
 
