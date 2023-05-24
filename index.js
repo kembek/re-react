@@ -164,9 +164,47 @@ function performUnitOfWork(fiber) {
   }
 }
 
+let wipFiber = null;
+let hookIndex = null;
+
 function updateFunctionComponent(fiber) {
+  wipFiber = fiber;
+  hookIndex = 0;
+  wipFiber.hooks = [];
   const children = [fiber.type(fiber.props)];
   reconcileChildren(fiber, children);
+}
+
+function useState(initial) {
+  const oldHook =
+    wipFiber.alternate &&
+    wipFiber.alternate.hooks &&
+    wipFiber.alternate.hooks[hookIndex];
+
+  const hook = {
+    state: oldHook ? oldHook.state : initial,
+    queue: [],
+  };
+
+  const actions = oldHook ? oldHook.queue : [];
+  actions.forEach((action) => {
+    hook.state = action(hook.state);
+  });
+
+  const setState = (action) => {
+    hook.queue.push(action);
+    wipRoot = {
+      dom: currentRoot.dom,
+      props: currentRoot.props,
+      alternate: currentRoot,
+    };
+    nextUnitOfWork = wipRoot;
+    deletions = [];
+  };
+
+  wipFiber.hooks.push(hook);
+  hookIndex++;
+  return [hook.state, setState];
 }
 
 function updateHostComponent(fiber) {
@@ -232,14 +270,39 @@ function reconcileChildren(wipFiber, elements) {
 const ReReact = {
   createElement,
   render,
+  useState,
 };
 
 /** @jsx ReReact.createElement */
-const App = ({ name }) => (
-  <div style="background: salmon">
-    <h1>Hello {name}</h1>
-  </div>
-);
+const Counter = () => {
+  const [count, setCount] = ReReact.useState(0);
+  const [userInput, setUserInput] = ReReact.useState("");
+
+  return (
+    <div style="background: salmon">
+      <h1>Count {count}</h1>
+
+      <div>
+        <button onClick={() => setCount((prev) => prev + 1)}>Increment</button>
+        <button onClick={() => setCount((prev) => prev - 1)}>Decrement</button>
+      </div>
+      <hr />
+      <div>
+        <label htmlFor="userinput">User input: </label>
+        <input
+          type="text"
+          name="userinput"
+          id="userinput"
+          value={userInput}
+          onInput={(e) => setUserInput(() => e.target.value)}
+        />
+      </div>
+      <div>
+        <h4>User typed: {userInput}</h4>
+      </div>
+    </div>
+  );
+};
 
 const container = document.getElementById("root");
-ReReact.render(<App name="Beknazar" />, container);
+ReReact.render(<Counter />, container);
