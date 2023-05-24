@@ -3,7 +3,7 @@ function createElement(type, props, ...children) {
     type,
     props: {
       ...props,
-      children: children.map((child) =>
+      children: children.flat().map((child) =>
         // React doesn’t wrap primitive values or create empty arrays when there aren’t children, but we do it because it will simplify our code, and for our library we prefer simple code than performant code.
         typeof child === "object" ? child : createTextElement(child)
       ),
@@ -275,33 +275,11 @@ const ReReact = {
 
 /** @jsx ReReact.createElement */
 const Counter = () => {
-  const [count, setCount] = ReReact.useState(0);
-  const [userInput, setUserInput] = ReReact.useState("");
+  const elements = Array(6500)
+    .fill(null)
+    .map((_, idx) => <div className="box">{idx}</div>);
 
-  return (
-    <div style="background: salmon">
-      <h1>Count {count}</h1>
-
-      <div>
-        <button onClick={() => setCount((prev) => prev + 1)}>Increment</button>
-        <button onClick={() => setCount((prev) => prev - 1)}>Decrement</button>
-      </div>
-      <hr />
-      <div>
-        <label htmlFor="userinput">User input: </label>
-        <input
-          type="text"
-          name="userinput"
-          id="userinput"
-          value={userInput}
-          onInput={(e) => setUserInput(() => e.target.value)}
-        />
-      </div>
-      <div>
-        <h4>User typed: {userInput}</h4>
-      </div>
-    </div>
-  );
+  return <div>{elements}</div>;
 };
 
 const container = document.getElementById("root");
